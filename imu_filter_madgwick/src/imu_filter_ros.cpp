@@ -40,6 +40,8 @@ ImuFilterRos::ImuFilterRos(ros::NodeHandle nh, ros::NodeHandle nh_private)
     if (!nh_private_.getParam("reverse_tf", reverse_tf_)) reverse_tf_ = false;
     if (!nh_private_.getParam("fixed_frame", fixed_frame_))
         fixed_frame_ = "odom";
+    if (!nh_private_.getParam("imu_frame", imu_frame_))
+        imu_frame_ = "";
     if (!nh_private_.getParam("constant_dt", constant_dt_)) constant_dt_ = 0.0;
     if (!nh_private_.getParam("remove_gravity_vector", remove_gravity_vector_))
         remove_gravity_vector_ = false;
@@ -167,7 +169,10 @@ void ImuFilterRos::imuCallback(const ImuMsg::ConstPtr& imu_msg_raw)
     const geometry_msgs::Vector3& lin_acc = imu_msg_raw->linear_acceleration;
 
     ros::Time time = imu_msg_raw->header.stamp;
-    imu_frame_ = imu_msg_raw->header.frame_id;
+    if (imu_frame_.empty())
+    {
+        imu_frame_ = imu_msg_raw->header.frame_id;
+    }
 
     if (!initialized_ || stateless_)
     {
@@ -230,7 +235,10 @@ void ImuFilterRos::imuMagCallback(const ImuMsg::ConstPtr& imu_msg_raw,
     const geometry_msgs::Vector3& mag_fld = mag_msg->magnetic_field;
 
     ros::Time time = imu_msg_raw->header.stamp;
-    imu_frame_ = imu_msg_raw->header.frame_id;
+    if (imu_frame_.empty())
+    {
+        imu_frame_ = imu_msg_raw->header.frame_id;
+    }
 
     /*** Compensate for hard iron ***/
     geometry_msgs::Vector3 mag_compensated;
@@ -372,6 +380,8 @@ void ImuFilterRos::publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw)
     // create and publish filtered IMU message
     boost::shared_ptr<ImuMsg> imu_msg =
         boost::make_shared<ImuMsg>(*imu_msg_raw);
+
+    imu_msg->header.frame_id = imu_frame_;
 
     imu_msg->orientation.w = q0;
     imu_msg->orientation.x = q1;
